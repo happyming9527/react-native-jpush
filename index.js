@@ -1,14 +1,14 @@
 /**
  * Created by lvbingru on 10/23/15.
  */
-import {NativeModules, DeviceEventEmitter} from 'react-native';
+import {AppState, NativeModules, DeviceEventEmitter} from 'react-native';
 
 const nativeModule = NativeModules.JPush;
 const invariant = require('invariant');
 
 const _notifHandlers = [];
 let _initialNotification = nativeModule &&
-    nativeModule.initialNotification;
+  nativeModule.initialNotification;
 
 export const JpushEventReceiveMessage = 'kJPFNetworkDidReceiveMessageNotification'
 export const JpushEventOpenMessage = 'kJPFNetworkDidOpenMessageNotification'
@@ -32,7 +32,7 @@ export default class JPushNotification {
 
     static popInitialNotification() {
         const initialNotification = _initialNotification &&
-            new JPushNotification(_initialNotification);
+          new JPushNotification(_initialNotification);
         _initialNotification = null;
         return initialNotification;
     }
@@ -57,18 +57,31 @@ export default class JPushNotification {
         })
     }
 
+    static getInitialNotification() {
+        return _initialNotification && this.popInitialNotification()
+    }
+
     static addEventListener(type: string, handler: Function) {
+        let that = this
         checkListenerType(type)
 
         if (type === JpushEventOpenMessage && _initialNotification) {
             handler(this.popInitialNotification())
         }
+
         const listener = DeviceEventEmitter.addListener(
-            type,
-            (note) => {
-                handler(note && new JPushNotification(note));
-            }
+          type,
+          (note) => {
+              handler(note && new JPushNotification(note));
+          }
         );
+        listener.changeStateFunc = function(state) {
+            if (state === 'active') {
+                let mess = that.popInitialNotification()
+                if (mess) handler(mess)
+            }
+        }
+        AppState.addEventListener('change', listener.changeStateFunc);
         _notifHandlers.push(listener)
         return listener;
     }
@@ -77,6 +90,8 @@ export default class JPushNotification {
         const index = _notifHandlers.indexOf(listener)
         if (index >=0) {
             _notifHandlers.splice(index,1)
+            AppState.removeEventListener('change', listener.changeStateFunc)
+            listener.changeStateFunc = null
             listener.remove()
         }
     }
@@ -162,9 +177,8 @@ export default class JPushNotification {
 
 function checkListenerType(type) {
     invariant(
-        type === JpushEventReceiveMessage || type === JpushEventOpenMessage || type === JpushEventReceiveCustomMessage,
-        'JPushNotification only supports `JpushEventReceiveMessage` ,`JpushEventOpenMessage`, `JpushEventReceiveCustomMessage`, events'
+      type === JpushEventReceiveMessage || type === JpushEventOpenMessage || type === JpushEventReceiveCustomMessage,
+      'JPushNotification only supports `JpushEventReceiveMessage` ,`JpushEventOpenMessage`, `JpushEventReceiveCustomMessage`, events'
     );
 }
-
 

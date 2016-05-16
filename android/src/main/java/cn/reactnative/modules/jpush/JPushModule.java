@@ -86,6 +86,7 @@ public class JPushModule extends ReactContextBaseJavaModule {
             WritableMap message = Arguments.fromBundle(bundle);
             DeviceEventManagerModule.RCTDeviceEventEmitter emitter = gModules.getReactApplicationContext().getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class);
             emitter.emit(eventName, message);
+            JPushModule.holdMessage = null;
             return;
         }
     }
@@ -257,6 +258,9 @@ public class JPushModule extends ReactContextBaseJavaModule {
                     Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);
                     launchIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
                     context.startActivity(launchIntent);
+                    if (JPushModule.gModules != null) {
+                        JPushModule.onReceive(context, intent);
+                    }
                 }
             }
         }
